@@ -26,11 +26,22 @@ App = {
       App.contracts.Election = TruffleContract(election);
       // Connect provider to interact with contract
       App.contracts.Election.setProvider(App.web3Provider);
-
+      App.listenForEvents();
       return App.render();
     });
   },
 
+  listenForEvents : function(){
+    App.contracts.Election.deployed().then(function(instance){
+      instance.votedEvent({},{
+        fromBlock:0,
+        toBlock:'latest'
+      }).watch(function(error,event){
+        console.log("event trigerred",event);
+        App.render();
+      });
+    });
+  },
   render: function() {
     var electionInstance;
     var loader = $("#loader");
@@ -53,8 +64,9 @@ App = {
       return electionInstance.candidatesCount();
     }).then(function(candidatesCount) {
       var candidatesResults = $("#candidatesResults");
+      var  candidatesSelect = $('#candidatesSelect');
       candidatesResults.empty();
-
+     // candidatesSelect.empty();
       for (var i = 1; i <= candidatesCount; i++) {
         electionInstance.candidates(i).then(function(candidate) {
           var id = candidate[0];
@@ -64,13 +76,33 @@ App = {
           // Render candidate Result
           var candidateTemplate = "<tr><th>" + id + "</th><td>" + name + "</td><td>" + voteCount + "</td></tr>"
           candidatesResults.append(candidateTemplate);
+
+          var candidateOption = "<option value='" + id + "'>" + name + "</option>";
+          candidatesSelect.append(candidateOption);
         });
       }
-      
+      return electionInstance.voters(App.account);
+    }).then(function(hasVoted){
+      if(hasVoted){
+        $('form').hide();
+      }
       loader.hide();
-      content.show();
+      content.show();    
     }).catch(function(error) {
       console.warn(error);
+    });
+  },
+
+  castVote: function() {
+    var candidateId = $('#candidatesSelect').val();
+    App.contracts.Election.deployed().then(function(instance) {
+      return instance.vote(candidateId, { from: App.account });
+    }).then(function(result) {
+      // Wait for votes to update
+      $("#content").hide();
+      $("#loader").show();
+    }).catch(function(err) {
+      console.error(err);
     });
   }
 
@@ -79,5 +111,5 @@ App = {
 $(function() {
   $(window).load(function() {
     App.init();
-  });
+  }); 
 });

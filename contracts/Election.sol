@@ -13,7 +13,10 @@ contract Election {
 
     //store candidates
     mapping(uint => Candidate) public candidates;
-
+    
+    event votedEvent(
+        uint indexed _candidateId
+    );
     //store candidates count
     uint public candidatesCount;
 
@@ -32,6 +35,6 @@ contract Election {
         require(_candidateId>0 && _candidateId<=candidatesCount);
         voters[msg.sender] = true;
         candidates[_candidateId].voteCount++;
-
+        votedEvent(_candidateId);
     }
 }
